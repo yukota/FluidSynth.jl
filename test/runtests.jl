@@ -1,20 +1,11 @@
-using fluidsynth
-using Plots
+using Test
 
-gr()
+using fluidsynth
 
 synth = Synth()
 
+sfont_id = sfload(synth, "violin_sample.sf2")
+program_select(synth, Int32(0), sfont_id, Int32(0), Int32(0))
 noteon(synth, Int32(0), Int32(60), Int32(70))
 wav = write_s16_stereo(synth, Int32(1024))
-
-noteoff(synth, Int32(0), Int32(60))
-
-del(synth)
-
-print(length(wav))
-x = 1:length(wav)
-#plot(x, wav, marker=:circle)
-plot(rand(4,4))
-# check wav;
-gui()
+@test length(wav) == 2048

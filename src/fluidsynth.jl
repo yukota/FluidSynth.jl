@@ -30,11 +30,10 @@ mutable struct Synth
         # create synth
 	    synth.synth_ptr = ccall((:new_fluid_synth, libfluidsynth), Ptr{Cvoid}, (Ptr{Cvoid},), synth.setting_ptr)
 
-		finalizer(synth,
-			function(synth::Synth)
-				ccall((:delete_fluid_settings, libfluidsynth), Cvoid, (Ptr{Cvoid},), synth.setting_ptr)
-				ccall((:delete_fluid_synth, libfluidsynth), Cvoid, (Ptr{Cvoid},), synth.synth_ptr)
-			end)
+		finalizer(synth) do synth
+			ccall((:delete_fluid_settings, libfluidsynth), Cvoid, (Ptr{Cvoid},), synth.setting_ptr)
+			ccall((:delete_fluid_synth, libfluidsynth), Cvoid, (Ptr{Cvoid},), synth.synth_ptr)
+		end
 
  	    synth
     end
@@ -50,11 +49,9 @@ Return SoundFont ID.
 - `reset_presets` : true to re-assign presets for all MIDI channels
 """
 function sfload(synth::Synth, filename::AbstractString, reset_presets=false::Bool)
-	c_reset_preset::Cint
+	c_reset_preset = 0
 	if reset_presets
 		c_reset_preset = 1
-	else
-		c_reset_preset = 0
 	end
     ccall((:fluid_synth_sfload, libfluidsynth), Cint, (Ptr{Cvoid}, Cstring, Cint), synth.synth_ptr, filename, c_reset_preset);
 end
