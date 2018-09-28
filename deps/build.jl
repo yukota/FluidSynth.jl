@@ -2,8 +2,8 @@ using BinDeps
 
 @BinDeps.setup
 
-fluidsynth = library_dependency("libfluidsynth", aliases=["libfluidsynth.so.1"])
+fluidsynth = library_dependency("fluidsynth", aliases=["libfluidsynth.so"])
 
 provides(AptGet, Dict("libfluidsynth-dev" => fluidsynth))
 
-@BinDeps.install Dict(:libfluidsynth => :libfluidsynth)
+@BinDeps.install Dict(:fluidsynth => :libfluidsynth)
