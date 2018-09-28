@@ -1,6 +1,6 @@
 language: julia
 os:
-  -linux
+  - linux
 julia:
   - 1.0.0
 notifications:
