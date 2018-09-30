@@ -53,7 +53,11 @@ function sfload(synth::Synth, filename::AbstractString, reset_presets=false::Boo
 	if reset_presets
 		c_reset_preset = 1
 	end
-    ccall((:fluid_synth_sfload, libfluidsynth), Cint, (Ptr{Cvoid}, Cstring, Cint), synth.synth_ptr, filename, c_reset_preset);
+    ret = ccall((:fluid_synth_sfload, libfluidsynth), Cint, (Ptr{Cvoid}, Cstring, Cint), synth.synth_ptr, filename, c_reset_preset);
+	if ret == FLUID_NG
+		throw(ErrorException())
+	end
+    ret
 end
 
 """
@@ -65,7 +69,10 @@ Select an instrument on a MIDI channel by SoundFont ID, bank and program numbers
 - `preset_num` : MIDI program number
 """
 function program_select(synth::Synth, chan::Int32, sfont_id::Int32, bank_num::Int32, preset_num::Int32)
-    ccall((:fluid_synth_program_select, libfluidsynth), Cint, (Ptr{Cvoid}, Cint, Cint, Cint, Cint), synth.synth_ptr, chan, sfont_id, bank_num, preset_num)
+    ret = ccall((:fluid_synth_program_select, libfluidsynth), Cint, (Ptr{Cvoid}, Cint, Cint, Cint, Cint), synth.synth_ptr, chan, sfont_id, bank_num, preset_num)
+	if ret == FLUID_NG
+		throw(ErrorException())
+	end
 end
 
 """
@@ -76,7 +83,10 @@ Send a note-on event.
 - `vel` : MIDI velocity(0-127, 0=noteoff)
 """
 function noteon(synth::Synth, chan::Int32, key::Int32, vel::Int32)
-    ccall((:fluid_synth_noteon, libfluidsynth), Cint, (Ptr{Cvoid}, Cint, Cint, Cint), synth.synth_ptr, chan, key, vel)
+    ret = ccall((:fluid_synth_noteon, libfluidsynth), Cint, (Ptr{Cvoid}, Cint, Cint, Cint), synth.synth_ptr, chan, key, vel)
+	if ret == FLUID_NG
+		throw(ErrorException())
+	end
 end
 
 """
@@ -86,7 +96,10 @@ Send a note-off event.
 - `key` : MIDI note number(0-127)
 """
 function noteoff(synth::Synth, chan::Int32, key::Int32)
-    ccall((:fluid_synth_noteoff, libfluidsynth), Cint, (Ptr{Cvoid}, Cint, Cint), synth.synth_ptr, chan, key)
+    ret = ccall((:fluid_synth_noteoff, libfluidsynth), Cint, (Ptr{Cvoid}, Cint, Cint), synth.synth_ptr, chan, key)
+	if ret == FLUID_NG
+		throw(ErrorException())
+	end
 end
 
 """
@@ -96,7 +109,10 @@ Set the MIDI pitch bend controller value on a MIDI channel.
 - `val` : MIDI pitch bend value(0-16383 with 8192 being center)
 """
 function pitch_bend(synth::Synth, chan::Int32, val::Int32)
-    ccall((:fluid_synth_pitch_bend, libfluidsynth), Cint, (Ptr{Cvoid}, Cint, Cint), synth.synth_ptr, chan, val)
+    ret = ccall((:fluid_synth_pitch_bend, libfluidsynth), Cint, (Ptr{Cvoid}, Cint, Cint), synth.synth_ptr, chan, val)
+	if ret == FLUID_NG
+		throw(ErrorException())
+	end
 end
 
 """
@@ -107,7 +123,10 @@ Send a MIDI controller event on a MIDI channel.
 - `val` : MIDI controller value(0-127)
 """
 function cc(synth::Synth, chan::Int32, num::Int32, val::Int32)
-    ccall((:fluid_synth_cc, libfluidsynth), Cint, (Ptr{Cvoid}, Cint, Cint, Cint), synth.synth_ptr, chan, num, val)
+    ret = ccall((:fluid_synth_cc, libfluidsynth), Cint, (Ptr{Cvoid}, Cint, Cint, Cint), synth.synth_ptr, chan, num, val)
+	if ret == FLUID_NG
+		throw(ErrorException())
+	end
 end
 
 """
@@ -122,10 +141,13 @@ Synthesize a block of 16 bit audio samples to audio buffers.
 - `rincr` : Increment between samples stored to 'rout'.
 """
 function write_s16(synth::Synth, len::Int32, lout::Vector{Int16}, loff::Int32, lincr::Int32, rout::Vector{Int16}, roff::Int32, rincr::Int32)
-    ccall((:fluid_synth_write_s16, libfluidsynth),
+    ret = ccall((:fluid_synth_write_s16, libfluidsynth),
 		Cint,
 		(Ptr{Cvoid}, Cint, Ptr{Cvoid}, Cint, Cint, Ptr{Cvoid}, Cint, Cint),
 		synth.synth_ptr, len, lout, loff, lincr, rout, roff, rincr)
+	if ret == FLUID_NG
+		throw(ErrorException())
+	end
 end
 
 # support methods
