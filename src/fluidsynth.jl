@@ -8,7 +8,7 @@ else
     error("fluidsynth not properly installed. Please run Pkg.build(\"fluidsynth\")")
 end
 
-export Synth, sfload, program_select, noteoff, noteon, write_s16_stereo
+export Synth, sfload, program_select, noteoff, noteon, write_s16_stereo, start_audio_driver
 
 const FLUDI_OK = 0
 const FLUID_NG = -1
@@ -16,11 +16,12 @@ const FLUID_NG = -1
 mutable struct Synth
     synth_ptr::Ptr{Cvoid}
     setting_ptr::Ptr{Cvoid}
+	audio_driver_ptr::Ptr{Cvoid}
 
     function Synth(gain=0.2, samplerate=44100, channels=256)
 
         # settings
-        synth = new(C_NULL, C_NULL)
+        synth = new(C_NULL, C_NULL, C_NULL)
 	    synth.setting_ptr = ccall((:new_fluid_settings, libfluidsynth), Ptr{Cvoid}, ())
         # set setting parameters
         ccall((:fluid_settings_setstr, libfluidsynth), Cint, (Ptr{Cvoid}, Cstring, Cstring), synth.setting_ptr, "synth.gain", string(gain))
@@ -33,6 +34,9 @@ mutable struct Synth
 		finalizer(synth) do synth
 			ccall((:delete_fluid_settings, libfluidsynth), Cvoid, (Ptr{Cvoid},), synth.setting_ptr)
 			ccall((:delete_fluid_synth, libfluidsynth), Cvoid, (Ptr{Cvoid},), synth.synth_ptr)
+			if synth.audio_driver_ptr != C_NULL
+				call((:delete_fluid_audio_driver, libfluidsynth), Cvoid, (Ptr{Cvoid},), synth.audio_driver_ptr)
+			end
 		end
 
  	    synth
@@ -40,6 +44,14 @@ mutable struct Synth
 end
 
 # fluidsynth interfaces.
+function setting_setstr(synth::Synth, name::AbstractString, str::String)
+	ret = ccall((:fluid_settings_setstr, libfluidsynth), Cint, (Ptr{Cvoid}, Cstring, Cstring), synth.setting_ptr, name, str)
+	if ret == FLUID_NG
+		throw(ErrorException(""))
+	end
+	ret
+end
+
 """
 Load SoundFont file.
 Return SoundFont ID.
@@ -55,7 +67,7 @@ function sfload(synth::Synth, filename::AbstractString, reset_presets=false::Boo
 	end
     ret = ccall((:fluid_synth_sfload, libfluidsynth), Cint, (Ptr{Cvoid}, Cstring, Cint), synth.synth_ptr, filename, c_reset_preset);
 	if ret == FLUID_NG
-		throw(ErrorException())
+		throw(ErrorException(""))
 	end
     ret
 end
@@ -71,7 +83,7 @@ Select an instrument on a MIDI channel by SoundFont ID, bank and program numbers
 function program_select(synth::Synth, chan::Int32, sfont_id::Int32, bank_num::Int32, preset_num::Int32)
     ret = ccall((:fluid_synth_program_select, libfluidsynth), Cint, (Ptr{Cvoid}, Cint, Cint, Cint, Cint), synth.synth_ptr, chan, sfont_id, bank_num, preset_num)
 	if ret == FLUID_NG
-		throw(ErrorException())
+		throw(ErrorException(""))
 	end
 end
 
@@ -85,7 +97,7 @@ Send a note-on event.
 function noteon(synth::Synth, chan::Int32, key::Int32, vel::Int32)
     ret = ccall((:fluid_synth_noteon, libfluidsynth), Cint, (Ptr{Cvoid}, Cint, Cint, Cint), synth.synth_ptr, chan, key, vel)
 	if ret == FLUID_NG
-		throw(ErrorException())
+		throw(ErrorException(""))
 	end
 end
 
@@ -98,7 +110,7 @@ Send a note-off event.
 function noteoff(synth::Synth, chan::Int32, key::Int32)
     ret = ccall((:fluid_synth_noteoff, libfluidsynth), Cint, (Ptr{Cvoid}, Cint, Cint), synth.synth_ptr, chan, key)
 	if ret == FLUID_NG
-		throw(ErrorException())
+		throw(ErrorException(""))
 	end
 end
 
@@ -111,7 +123,7 @@ Set the MIDI pitch bend controller value on a MIDI channel.
 function pitch_bend(synth::Synth, chan::Int32, val::Int32)
     ret = ccall((:fluid_synth_pitch_bend, libfluidsynth), Cint, (Ptr{Cvoid}, Cint, Cint), synth.synth_ptr, chan, val)
 	if ret == FLUID_NG
-		throw(ErrorException())
+		throw(ErrorException(""))
 	end
 end
 
@@ -125,7 +137,7 @@ Send a MIDI controller event on a MIDI channel.
 function cc(synth::Synth, chan::Int32, num::Int32, val::Int32)
     ret = ccall((:fluid_synth_cc, libfluidsynth), Cint, (Ptr{Cvoid}, Cint, Cint, Cint), synth.synth_ptr, chan, num, val)
 	if ret == FLUID_NG
-		throw(ErrorException())
+		throw(ErrorException(""))
 	end
 end
 
@@ -146,7 +158,7 @@ function write_s16(synth::Synth, len::Int32, lout::Vector{Int16}, loff::Int32, l
 		(Ptr{Cvoid}, Cint, Ptr{Cvoid}, Cint, Cint, Ptr{Cvoid}, Cint, Cint),
 		synth.synth_ptr, len, lout, loff, lincr, rout, roff, rincr)
 	if ret == FLUID_NG
-		throw(ErrorException())
+		throw(ErrorException(""))
 	end
 end
 
@@ -161,6 +173,23 @@ function write_s16_stereo(synth::Synth, len::Int32)
     buf = Vector{Int16}(undef, 2 * len)
     write_s16(synth, len, buf, Int32(0) , Int32(2), buf, Int32(1), Int32(2))
     return buf
+end
+
+"""
+start audio output driver.
+# Arguments
+- `driver::Abstractstring` : The audio system to be used as output.
+                             jack, alsa, oss, pulseaudio, coreaudio,
+							 dsound, portaudio, sndman, dart, file
+"""
+function start_audio_driver(synth::Synth, driver=""::String)
+	if driver != ""
+		setting_setstr(synth, "audio.driver", driver)
+	end
+	synth.audio_driver_ptr = ccall((:new_fluid_audio_driver, libfluidsynth),
+		Ptr{Cvoid},
+		(Ptr{Cvoid}, Ptr{Cvoid}),
+		synth.setting_ptr, synth.synth_ptr)
 end
 
 end # module
