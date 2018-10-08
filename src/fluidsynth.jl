@@ -8,50 +8,72 @@ else
     error("fluidsynth not properly installed. Please run Pkg.build(\"fluidsynth\")")
 end
 
-export Synth, sfload, program_select, noteoff, noteon, write_s16_stereo, start_audio_driver
+export Settings, Synth, sfload, program_select, noteoff, noteon, write_s16_stereo, start_audio_driver
 
 const FLUDI_OK = 0
 const FLUID_NG = -1
 
-mutable struct Synth
-    synth_ptr::Ptr{Cvoid}
-    setting_ptr::Ptr{Cvoid}
-	audio_driver_ptr::Ptr{Cvoid}
+mutable struct Settings
+	settings_ptr::Ptr{Cvoid}
 
-    function Synth(gain=0.2, samplerate=44100, channels=256)
-
-        # settings
-        synth = new(C_NULL, C_NULL, C_NULL)
-	    synth.setting_ptr = ccall((:new_fluid_settings, libfluidsynth), Ptr{Cvoid}, ())
-        # set setting parameters
-        ccall((:fluid_settings_setstr, libfluidsynth), Cint, (Ptr{Cvoid}, Cstring, Cstring), synth.setting_ptr, "synth.gain", string(gain))
-        ccall((:fluid_settings_setstr, libfluidsynth), Cint, (Ptr{Cvoid}, Cstring, Cstring), synth.setting_ptr, "synth.sample-rate", string(samplerate))
-        ccall((:fluid_settings_setstr, libfluidsynth), Cint, (Ptr{Cvoid}, Cstring, Cstring), synth.setting_ptr, "synth.midi-channels", string(channels))
-
-        # create synth
-	    synth.synth_ptr = ccall((:new_fluid_synth, libfluidsynth), Ptr{Cvoid}, (Ptr{Cvoid},), synth.setting_ptr)
-
-		finalizer(synth) do synth
-			ccall((:delete_fluid_settings, libfluidsynth), Cvoid, (Ptr{Cvoid},), synth.setting_ptr)
-			ccall((:delete_fluid_synth, libfluidsynth), Cvoid, (Ptr{Cvoid},), synth.synth_ptr)
-			if synth.audio_driver_ptr != C_NULL
-				call((:delete_fluid_audio_driver, libfluidsynth), Cvoid, (Ptr{Cvoid},), synth.audio_driver_ptr)
-			end
+	function Settings()
+ 		settings = new(C_NULL)
+		settings.settings_ptr = ccall((:new_fluid_settings, libfluidsynth), Ptr{Cvoid}, ())
+		finalizer(settings) do settings
+			ccall((:delete_fluid_settings, libfluidsynth), Cvoid, (Ptr{Cvoid},), settings.settings_ptr)
 		end
-
- 	    synth
-    end
+		settings
+	end
 end
 
-# fluidsynth interfaces.
-function setting_setstr(synth::Synth, name::AbstractString, str::String)
-	ret = ccall((:fluid_settings_setstr, libfluidsynth), Cint, (Ptr{Cvoid}, Cstring, Cstring), synth.setting_ptr, name, str)
+function setstr(settings::Settings, name::String, str::String)
+	ret = ccall((:fluid_settings_setstr, libfluidsynth), Cint, (Ptr{Cvoid}, Cstring, Cstring), settings.settings_ptr, name, str)
 	if ret == FLUID_NG
 		throw(ErrorException(""))
 	end
 	ret
 end
 
+function setint(settings::Settings, name::String, val::Int32)
+	ret = ccall((:fluid_settings_setstr, libfluidsynth), Cint, (Ptr{Cvoid}, Cstring, Cint), settings.settings_ptr, name, val)
+	if ret == FLUID_NG
+		throw(ErrorException(""))
+	end
+	ret
+end
+
+mutable struct Synth
+    synth_ptr::Ptr{Cvoid}
+    settings::Settings
+	audio_driver_ptr::Ptr{Cvoid}
+
+    function Synth(gain=0.2, samplerate=44100, channels=256)
+
+        # default settings
+        settings = Settings()
+		setstr(settings, "synth.gain", string(gain))
+		setstr(settings, "synth.sample-rate", string(samplerate))
+		setstr(settings, "synth.midi-channels", string(channels))
+		synth = Synth(settings)
+ 	    synth
+    end
+
+	function Synth(settings::Settings)
+		synth = new(C_NULL, settings, C_NULL)
+
+		synth.synth_ptr = ccall((:new_fluid_synth, libfluidsynth), Ptr{Cvoid}, (Ptr{Cvoid},), synth.settings.settings_ptr)
+		finalizer(synth) do synth
+			ccall((:delete_fluid_synth, libfluidsynth), Cvoid, (Ptr{Cvoid},), synth.synth_ptr)
+			if synth.audio_driver_ptr != C_NULL
+				call((:delete_fluid_audio_driver, libfluidsynth), Cvoid, (Ptr{Cvoid},), synth.audio_driver_ptr)
+			end
+		end
+
+		synth
+	end
+end
+
+# fluidsynth interfaces.
 """
 Load SoundFont file.
 Return SoundFont ID.
@@ -184,7 +206,7 @@ start audio output driver.
 """
 function start_audio_driver(synth::Synth, driver=""::String)
 	if driver != ""
-		setting_setstr(synth, "audio.driver", driver)
+		setstr(synth.settings, "audio.driver", driver)
 	end
 	synth.audio_driver_ptr = ccall((:new_fluid_audio_driver, libfluidsynth),
 		Ptr{Cvoid},
