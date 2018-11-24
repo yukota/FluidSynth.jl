@@ -2,7 +2,8 @@ using Test
 
 using fluidsynth
 
-synth = Synth()
+settings = Settings()
+synth = Synth(settings)
 
 sfont_id = sfload(synth, "violin_sample.sf2")
 program_select(synth, Int32(0), sfont_id, Int32(0), Int32(0))

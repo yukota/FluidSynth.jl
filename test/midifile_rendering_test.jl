@@ -2,8 +2,6 @@ using Test
 
 using fluidsynth
 
-synth = Synth()
-
 settings = Settings()
 setstr(settings, "audio.file.name", "test_result.wav")
 setstr(settings, "player.timing-source", "sample")

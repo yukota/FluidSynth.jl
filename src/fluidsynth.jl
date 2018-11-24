@@ -10,10 +10,11 @@ end
 
 export FLUID_OK, FLUID_FAILED,
     Settings, setstr, setint,
-	Synth, sfload, program_select, noteoff, noteon, write_s16_stereo, start_audio_driver,
+	Synth, sfload, program_select, noteoff, noteon, write_s16_stereo,
 	Player, add, play, stop, join, get_status,
 	PlayerStatus, Playing, Ready, Done,
-	FileRenderer, process_block
+	FileRenderer, process_block,
+	AudioDriver
 
 const FLUID_OK = 0
 const FLUID_FAILED = -1
@@ -50,30 +51,14 @@ end
 mutable struct Synth
     synth_ptr::Ptr{Cvoid}
     settings::Settings
-	audio_driver_ptr::Ptr{Cvoid}
-
-    function Synth(gain=0.2, samplerate=44100, channels=256)
-
-        # default settings
-        settings = Settings()
-		setstr(settings, "synth.gain", string(gain))
-		setstr(settings, "synth.sample-rate", string(samplerate))
-		setstr(settings, "synth.midi-channels", string(channels))
-		synth = Synth(settings)
- 	    synth
-    end
 
 	function Synth(settings::Settings)
-		synth = new(C_NULL, settings, C_NULL)
+		synth = new(C_NULL, settings)
 
-		synth.synth_ptr = ccall((:new_fluid_synth, libfluidsynth), Ptr{Cvoid}, (Ptr{Cvoid},), synth.settings.settings_ptr)
+		synth.synth_ptr = ccall((:new_fluid_synth, libfluidsynth), Ptr{Cvoid}, (Ptr{Cvoid},), settings.settings_ptr)
 		finalizer(synth) do synth
 			ccall((:delete_fluid_synth, libfluidsynth), Cvoid, (Ptr{Cvoid},), synth.synth_ptr)
-			if synth.audio_driver_ptr != C_NULL
-				call((:delete_fluid_audio_driver, libfluidsynth), Cvoid, (Ptr{Cvoid},), synth.audio_driver_ptr)
-			end
 		end
-
 		synth
 	end
 end
@@ -271,7 +256,7 @@ mutable struct FileRenderer
 	function FileRenderer(synth::Synth)
 		file_renderer = new(C_NULL, synth)
 
-		file_renderer.ptr = ccall((:new_fluid_file_renderer, libfluidsynth), Ptr{Cvoid}, (Ptr{Cvoid},), file_renderer.synth.synth_ptr)
+		file_renderer.ptr = ccall((:new_fluid_file_renderer, libfluidsynth), Ptr{Cvoid}, (Ptr{Cvoid},), synth.synth_ptr)
 		finalizer(file_renderer) do file_renderer
 			ccall((:delete_fluid_file_renderer, libfluidsynth), Cvoid, (Ptr{Cvoid},), file_renderer.ptr)
 		end
@@ -281,6 +266,25 @@ end
 
 function process_block(file_renderer::FileRenderer)
 	ccall((:fluid_file_renderer_process_block, libfluidsynth), Cint, (Ptr{Cvoid},), file_renderer.ptr)
+end
+
+
+# file renderer
+mutable struct AudioDriver
+
+	ptr::Ptr{Cvoid}
+    settings::Settings
+	synth::Synth
+
+	function AudioDriver(settings::Settings, synth::Synth)
+		audio_driver = new(C_NULL, settings, synth)
+
+		audio_driver.ptr = ccall((:new_fluid_audio_driver, libfluidsynth), Ptr{Cvoid}, (Ptr{Cvoid}, Ptr{Cvoid}), settings.settings_ptr, synth.synth_ptr)
+		finalizer(audio_driver) do audio_driver
+		    ccall((:delete_fluid_audio_driver, libfluidsynth), Cvoid, (Ptr{Cvoid},), audio_driver.ptr)
+		end
+		audio_driver
+	end
 end
 
 # support methods
@@ -296,21 +300,5 @@ function write_s16_stereo(synth::Synth, len::Int32)
     return buf
 end
 
-"""
-start audio output driver.
-# Arguments
-- `driver::Abstractstring` : The audio system to be used as output.
-                             jack, alsa, oss, pulseaudio, coreaudio,
-							 dsound, portaudio, sndman, dart, file
-"""
-function start_audio_driver(synth::Synth, driver=""::String)
-	if driver != ""
-		setstr(synth.settings, "audio.driver", driver)
-	end
-	synth.audio_driver_ptr = ccall((:new_fluid_audio_driver, libfluidsynth),
-		Ptr{Cvoid},
-		(Ptr{Cvoid}, Ptr{Cvoid}),
-		synth.setting_ptr, synth.synth_ptr)
-end
 
 end # module

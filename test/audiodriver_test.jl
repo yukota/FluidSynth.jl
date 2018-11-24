@@ -3,10 +3,12 @@
 
 using fluidsynth
 
-synth = Synth()
+settings = Settings()
+setstr(settings, "audio.driver", "pulseaudio")
 
-# use default sound audio
-start_audio_driver(synth, "pulseaudio")
+synth = Synth(settings)
+
+audio_driver = AudioDriver(settings, synth)
 
 sfont_id = sfload(synth, "violin_sample.sf2")
 program_select(synth, Int32(0), sfont_id, Int32(0), Int32(0))
