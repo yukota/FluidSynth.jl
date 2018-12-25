@@ -10,7 +10,7 @@ end
 
 export FLUID_OK, FLUID_FAILED,
     Settings, setstr, setint,
-	Synth, sfload, program_select, noteoff, noteon, write_s16_stereo,
+	Synth, sfload, program_select, noteoff, noteon, write_s16_stereo, write_s16, write_float,
 	Player, add, play, stop, join, get_status,
 	PlayerStatus, Playing, Ready, Done,
 	FileRenderer, process_block,
@@ -174,6 +174,15 @@ function write_s16(synth::Synth, len::Int32, lout::Vector{Int16}, loff::Int32, l
 	end
 end
 
+function write_float(synth::Synth, len::Int32, lout::Vector{Float32}, loff::Int32, lincr::Int32, rout::Vector{Float32}, roff::Int32, rincr::Int32)
+    ret = ccall((:fluid_synth_write_float, libfluidsynth),
+		Cint,
+		(Ptr{Cvoid}, Cint, Ptr{Cvoid}, Cint, Cint, Ptr{Cvoid}, Cint, Cint),
+		synth.synth_ptr, len, lout, loff, lincr, rout, roff, rincr)
+	if ret == FLUID_FAILED
+		throw(ErrorException(""))
+	end
+end
 
 # player
 mutable struct Player
