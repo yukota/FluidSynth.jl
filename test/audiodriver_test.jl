@@ -1,7 +1,7 @@
 # This test use audio device.
 # Don't add runtests.jl
 
-using fluidsynth
+using FluidSynth
 
 settings = Settings()
 setstr(settings, "audio.driver", "pulseaudio")

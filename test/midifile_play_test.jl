@@ -1,6 +1,6 @@
 using Test
 
-using fluidsynth
+using FluidSynth
 
 settings = Settings()
 setstr(settings, "audio.driver", "pulseaudio")
@@ -15,4 +15,4 @@ audio_driver = AudioDriver(settings, synth)
 add(player, "test.mid")
 play(player)
 
-fluidsynth.join(player)
+FluidSynth.join(player)

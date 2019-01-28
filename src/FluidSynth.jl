@@ -1,4 +1,4 @@
-module fluidsynth
+module FluidSynth
 
 # Load shared lib
 deps = joinpath(dirname(@__FILE__), "..", "deps", "deps.jl")

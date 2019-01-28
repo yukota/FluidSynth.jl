@@ -1,4 +1,4 @@
-name = "fluidsynth"
+name = "FluidSynth"
 uuid = "7b5f247c-b83c-11e8-2667-b92b55f05ea5"
 authors = ["YuK_Ota <whitenightwinter@gmail.com>"]
 version = "0.1.0"
