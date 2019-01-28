@@ -1,6 +1,6 @@
 using Test
 
-using fluidsynth
+using FluidSynth
 
 settings = Settings()
 setstr(settings, "audio.file.name", "test_result.wav")
@@ -24,4 +24,4 @@ while get_status(player) == Playing
 end
 
 stop(player)
-fluidsynth.join(player)
+FluidSynth.join(player)

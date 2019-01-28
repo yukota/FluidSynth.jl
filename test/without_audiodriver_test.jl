@@ -1,6 +1,6 @@
 using Test
 
-using fluidsynth
+using FluidSynth
 
 settings = Settings()
 synth = Synth(settings)
