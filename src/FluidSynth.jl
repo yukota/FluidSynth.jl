@@ -23,7 +23,7 @@ mutable struct Settings
     settings_ptr::Ptr{Cvoid}
 
     function Settings()
- 		settings = new(C_NULL)
+    settings = new(C_NULL)
     settings.settings_ptr = ccall((:new_fluid_settings, libfluidsynth), Ptr{Cvoid}, ())
     finalizer(settings) do settings
     ccall((:delete_fluid_settings, libfluidsynth), Cvoid, (Ptr{Cvoid},), settings.settings_ptr)
