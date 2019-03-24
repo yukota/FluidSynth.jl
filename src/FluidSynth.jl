@@ -122,7 +122,7 @@ Send a note-off event.
 function noteoff(synth::Synth, chan::Int32, key::Int32)
     ret = ccall((:fluid_synth_noteoff, libfluidsynth), Cint, (Ptr{Cvoid}, Cint, Cint), synth.synth_ptr, chan, key)
     if ret == FLUID_FAILED
-    throw(ErrorException(""))
+    throw(ErrorException("no matched noteon event"))
     end
 end
 
